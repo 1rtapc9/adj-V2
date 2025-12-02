@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Spotify Clone</title>
+<title>Spotify Web Clone Advanced</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,21 +13,27 @@
     <nav>
       <a href="#">Home</a>
       <a href="#">Search</a>
-      <a href="#">Your Library</a>
+      <a href="#">Library</a>
     </nav>
   </aside>
+
   <main class="main">
     <header class="topbar">
-      <button id="loginBtn">Log in with Spotify</button>
+      <div class="user-info">
+        <button id="loginBtn">Log in with Spotify</button>
+        <span id="username"></span>
+      </div>
       <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Search songs, albums, playlists...">
         <button id="searchBtn">Search</button>
       </div>
     </header>
+
     <section class="results" id="results"></section>
-    <section class="player-wrap" id="playerWrap">
+    <div class="mini-player" id="miniPlayer">
       <iframe id="player" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
-    </section>
+      <div class="queue" id="queue"></div>
+    </div>
   </main>
 </div>
 
