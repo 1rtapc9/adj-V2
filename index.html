@@ -4,140 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Spotify Clone</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #121212;
-  --sidebar-bg: #000;
-  --accent: #1DB954;
-  --text: #fff;
-  --muted: #b3b3b3;
-  --radius: 8px;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Inter',sans-serif;color:var(--text);background:var(--bg);}
-a{text-decoration:none;color:inherit;}
-.container{display:flex;height:100vh;}
-.sidebar{
-  width:220px;background:var(--sidebar-bg);padding:20px;display:flex;flex-direction:column;
-}
-.sidebar h2{font-size:18px;margin-bottom:20px;color:var(--accent);}
-.sidebar nav a{display:block;padding:8px 0;color:var(--muted);}
-.sidebar nav a:hover{color:var(--text);}
-.main{flex:1;display:flex;flex-direction:column;padding:20px;overflow-y:auto;}
-.search-bar{margin-bottom:20px;display:flex;gap:10px;}
-.search-bar input{flex:1;padding:10px;border-radius:var(--radius);border:none;background:#222;color:var(--text);}
-.search-bar button{padding:10px 14px;border:none;border-radius:var(--radius);background:var(--accent);color:#000;cursor:pointer;font-weight:600;}
-.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;}
-.card{background:#181818;padding:10px;border-radius:var(--radius);cursor:pointer;transition:background 0.2s;}
-.card:hover{background:#282828;}
-.card img{width:100%;border-radius:var(--radius);}
-.card .title{font-size:14px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.card .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.player{margin-top:20px;border-radius:var(--radius);overflow:hidden;}
-iframe{width:100%;height:380px;border:0;}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="container">
-  <div class="sidebar">
+  <aside class="sidebar">
     <h2>My Music</h2>
     <nav>
       <a href="#">Home</a>
       <a href="#">Search</a>
       <a href="#">Your Library</a>
     </nav>
-  </div>
-  <div class="main">
-    <div class="search-bar">
-      <input type="text" id="searchInput" placeholder="Search songs, albums, playlists...">
-      <button id="searchBtn">Search</button>
-    </div>
-    <div class="results" id="results"></div>
-    <div class="player">
-      <iframe id="player" src="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
-    </div>
-  </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <button id="loginBtn">Log in with Spotify</button>
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search songs, albums, playlists...">
+        <button id="searchBtn">Search</button>
+      </div>
+    </header>
+    <section class="results" id="results"></section>
+    <section class="player-wrap" id="playerWrap">
+      <iframe id="player" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    </section>
+  </main>
 </div>
 
-<script>
-const clientId = 'YOUR_CLIENT_ID_HERE'; // Replace with your Spotify app Client ID
-const redirectUri = window.location.origin + window.location.pathname;
-const scopes = 'user-read-private playlist-read-private user-library-read';
-let accessToken = null;
-
-// PKCE helpers
-async function generateCodeVerifier(){ const array=new Uint32Array(56); crypto.getRandomValues(array); return btoa(String.fromCharCode(...array)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
-async function sha256(plain){ const encoder=new TextEncoder(); const data=encoder.encode(plain); const hash=await crypto.subtle.digest('SHA-256',data); return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
-
-let codeVerifier = localStorage.getItem('pkce_verifier') || '';
-document.getElementById('searchBtn').onclick = async ()=>{
-  const query = document.getElementById('searchInput').value.trim();
-  if(!query) return;
-  if(!accessToken){ alert('Please log in first'); return; }
-  const resultsEl = document.getElementById('results');
-  resultsEl.innerHTML = 'Loading...';
-  const type='track,playlist,album,show,episode,artist';
-  const resp = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=12`,{
-    headers:{Authorization:'Bearer '+accessToken}
-  });
-  const data = await resp.json();
-  const items = [];
-  ['tracks','playlists','albums','shows','episodes','artists'].forEach(k=>{
-    if(data[k] && data[k].items) data[k].items.forEach(it=>{
-      items.push({
-        type: k.slice(0,-1),
-        id: it.id,
-        title: it.name || '',
-        sub: it.artists ? it.artists.map(a=>a.name).join(', ') : it.owner?.display_name || it.publisher || '',
-        image: it.images?.[0]?.url || it.album?.images?.[0]?.url || ''
-      });
-    });
-  });
-  resultsEl.innerHTML='';
-  items.forEach(it=>{
-    const card = document.createElement('div'); card.className='card';
-    card.innerHTML=`<img src="${it.image}"><div class="title">${it.title}</div><div class="sub">${it.sub}</div>`;
-    card.onclick = ()=>{ document.getElementById('player').src=`https://open.spotify.com/embed/${it.type}/${it.id}`; };
-    resultsEl.appendChild(card);
-  });
-};
-
-// Handle redirect for login
-async function handleRedirect(){
-  const params = new URLSearchParams(window.location.search);
-  if(params.has('code')){
-    const code = params.get('code');
-    codeVerifier = localStorage.getItem('pkce_verifier');
-    const body = new URLSearchParams();
-    body.append('grant_type','authorization_code');
-    body.append('code', code);
-    body.append('redirect_uri', redirectUri);
-    body.append('client_id', clientId);
-    body.append('code_verifier', codeVerifier);
-    const resp = await fetch('https://accounts.spotify.com/api/token',{
-      method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}
-    });
-    const data = await resp.json();
-    accessToken = data.access_token;
-    history.pushState("", document.title, redirectUri);
-    alert('Logged in successfully!');
-  }
-}
-handleRedirect();
-
-// Login button
-const loginBtn = document.createElement('button');
-loginBtn.textContent='Log in with Spotify';
-loginBtn.style.margin='10px 0';
-loginBtn.onclick = async ()=>{
-  codeVerifier = await generateCodeVerifier();
-  localStorage.setItem('pkce_verifier',codeVerifier);
-  const codeChallenge = await sha256(codeVerifier);
-  const authUrl = `https://accounts.spotify.com/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge_method=S256&code_challenge=${codeChallenge}`;
-  window.location.href = authUrl;
-};
-document.querySelector('.main').insertBefore(loginBtn, document.querySelector('.search-bar'));
-</script>
+<script type="module" src="utils.js"></script>
+<script type="module" src="player.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
